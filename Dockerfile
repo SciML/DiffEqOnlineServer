@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     build-essential \
     make \
-    gcc
+    gcc \
+    libzmq3-dev
 
 
 # Make package folder and install everything in require
@@ -15,3 +16,15 @@ RUN apt-get update && apt-get install -y \
 RUN julia -e "Pkg.resolve()"
 COPY REQUIRE /root/.julia/v0.5/REQUIRE
 RUN julia -e "Pkg.resolve()"
+
+# Build some stuff that needs to be built separately -- breaking these out one-by-one allows easier modification since all builds prior to a change in the Dockerfile will be cached
+RUN julia -e 'Pkg.build("ZMQ")'
+RUN julia -e 'Pkg.build("Rmath")'
+RUN julia -e 'Pkg.build("StatsFuns")'
+RUN julia -e 'Pkg.build("Sundials")'
+
+
+
+# Run a test script
+COPY test.jl /test.jl
+ENTRYPOINT julia test.jl
