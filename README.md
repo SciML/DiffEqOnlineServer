@@ -19,12 +19,12 @@ docker run -i -t --rm -p 7777:7777 diffeqonline-server
 
 which should launch the two portions of the server.  You can then test it by going to something like [http://192.168.99.100:7777/squareit/WzEsMiwzXQ==](http://192.168.99.100:7777/squareit/WzEsMiwzXQ==) where you might need to change the IP.
 
-You can run a interactive version of the container with
+You can run a interactive version of the container and not start the server with
 
 ```
-docker run -dit diffeqonline-server
+docker run -dit -p 7777:7777 --entrypoint=/bin/bash diffeqonline-server
 ```
 
-which starts an interactive instance which you can then connect to.  
+(This does still open up the port in case you want to run some testing.)
 
 Right now the server seems to be working properly but calling the ode endpoint with the default ODE, `srvr.jl` appears to error out at `f = ode_def_opts(name, opts, ex, params...)`.  We can't see the error since JuliaWebAPI squashes it.  

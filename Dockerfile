@@ -25,10 +25,10 @@ RUN julia -e 'Pkg.build("Sundials")'
 RUN julia -e 'Pkg.build("JuliaWebAPI")'
 RUN julia -e 'Pkg.build("PlotlyJS")'
 RUN julia -e 'Pkg.build("Plots")'
+RUN julia -e 'Pkg.build("SymEngine")'
 
-# Run a test script
-# COPY test.jl /test.jl
-# ENTRYPOINT julia test.jl
+# Copy the test script in case someone wants to test things
+COPY test.jl /test.jl
 
 # Run the real server
 COPY /api /api
