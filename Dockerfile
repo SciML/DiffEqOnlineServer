@@ -22,9 +22,16 @@ RUN julia -e 'Pkg.build("ZMQ")'
 RUN julia -e 'Pkg.build("Rmath")'
 RUN julia -e 'Pkg.build("StatsFuns")'
 RUN julia -e 'Pkg.build("Sundials")'
-
-
+RUN julia -e 'Pkg.build("JuliaWebAPI")'
+RUN julia -e 'Pkg.build("PlotlyJS")'
+RUN julia -e 'Pkg.build("Plots")'
 
 # Run a test script
-COPY test.jl /test.jl
-ENTRYPOINT julia test.jl
+# COPY test.jl /test.jl
+# ENTRYPOINT julia test.jl
+
+# Run the real server
+COPY /api /api
+EXPOSE 7777
+COPY start_both.sh /start_both.sh
+ENTRYPOINT /bin/bash start_both.sh
