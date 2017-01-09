@@ -1,7 +1,9 @@
-JuliaWebAPI
-Logging
-Compat
-ZMQ
-DifferentialEquations
+DiffEqBase
+OrdinaryDiffEq
+ParameterizedFunctions
 Plots
+Mux
+JSON
+HttpCommon
 PlotlyJS
+Plotly

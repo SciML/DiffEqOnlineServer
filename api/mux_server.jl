@@ -56,7 +56,7 @@ function solveit(b64::String)
     println("tspan: ", tspan)
     u0 = [parse(Float64, u) for u in obj["initialConditions"]]
     println("u0: ", u0)
-    algstr = "Tsit5"  #Get this from the reqest in the future!
+    algstr = obj["solver"]  #Get this from the reqest in the future!
     algs = Dict{Symbol,OrdinaryDiffEq.OrdinaryDiffEqAlgorithm}(
                 :Tsit5 => Tsit5(),
                 :Vern6 => Vern6(),

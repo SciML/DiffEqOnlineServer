@@ -17,21 +17,15 @@ RUN julia -e "Pkg.resolve()"
 COPY REQUIRE /root/.julia/v0.5/REQUIRE
 RUN julia -e "Pkg.resolve()"
 
-# Build some stuff that needs to be built separately -- breaking these out one-by-one allows easier modification since all builds prior to a change in the Dockerfile will be cached
-RUN julia -e 'Pkg.build("ZMQ")'
-RUN julia -e 'Pkg.build("Rmath")'
-RUN julia -e 'Pkg.build("StatsFuns")'
-RUN julia -e 'Pkg.build("Sundials")'
-RUN julia -e 'Pkg.build("JuliaWebAPI")'
-RUN julia -e 'Pkg.build("PlotlyJS")'
+# Build all the things
+RUN julia -e 'Pkg.build()'
+
+# Build those things which are mysteriously not included in the list of all things
 RUN julia -e 'Pkg.build("Plots")'
 RUN julia -e 'Pkg.build("SymEngine")'
 
-# Copy the test script in case someone wants to test things
-COPY test.jl /test.jl
 
 # Run the real server
 COPY /api /api
 EXPOSE 7777
-COPY start_both.sh /start_both.sh
-ENTRYPOINT /bin/bash start_both.sh
+ENTRYPOINT julia /api/mux_server.jl
