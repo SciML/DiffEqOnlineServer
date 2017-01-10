@@ -9,11 +9,17 @@ end
 has_function_def(s::String) = has_function_def(parse(s; raise=false))
 has_function_def(e::Expr) = expr_has_head(e, Symbol[:(->), :function])
 
-# Headers
-function withHeaders(res)
+# Headers -- set Access-Control-Allow-Origin for either dev or prod
+function withHeaders(res, req)
+    println("Origin: ", get(req[:headers], "Origin", ""))
     headers  = HttpCommon.headers()
     headers["Content-Type"] = "application/json; charset=utf-8"
-    headers["Access-Control-Allow-Origin"] = "http://localhost:4200"
+    if get(req[:headers], "Origin", "") == "http://localhost:4200"
+        headers["Access-Control-Allow-Origin"] = "http://localhost:4200"
+    else
+        headers["Access-Control-Allow-Origin"] = "http://app.juliadiffeq.org"
+    end
+    println(headers["Access-Control-Allow-Origin"])
     Dict(
        :headers => headers,
        :body=> res
@@ -29,7 +35,6 @@ end
 
 # The ODE endpoint
 function solveit(req::Dict{Any,Any})
-    println(req)
     b64 = convert(String, req[:path][1])
     solveit(b64)
 end
@@ -102,11 +107,11 @@ end
 @app test = (
     Mux.defaults,
     page(respond("Nothing to see here...")),
-    route("/squareit", req -> withHeaders(squareit(req))),
-    route("/solveit", req -> withHeaders(solveit(req))),
-    route("/test", req -> withHeaders("Meh")),
+    route("/squareit", req -> withHeaders(squareit(req), req)),
+    route("/solveit", req -> withHeaders(solveit(req), req)),
+    route("/test", req -> withHeaders("Meh", req)),
     Mux.notfound()
 )
 
 println("About to start the server")
-@sync serve(test, port=7777)
+@sync serve(test, port=parse(Int64, ARGS[1]))

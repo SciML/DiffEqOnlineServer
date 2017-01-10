@@ -27,5 +27,10 @@ RUN julia -e 'Pkg.build("SymEngine")'
 
 # Run the real server
 COPY /api /api
-EXPOSE 7777
-ENTRYPOINT julia /api/mux_server.jl
+# EXPOSE 7777
+
+# Don't run as root
+# RUN useradd -ms /bin/bash myuser
+# USER myuser
+
+CMD julia /api/mux_server.jl $PORT
