@@ -36,3 +36,5 @@ docker run -dit -p 7777:7777 --entrypoint=/bin/bash diffeqonline-server
 (This does still open up the port in case you want to run some testing.)
 
 ## Deploying to Heroku
+
+General instructions can be found [here](https://devcenter.heroku.com/articles/container-registry-and-runtime).  
