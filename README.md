@@ -4,8 +4,10 @@ This repo includes the dockerfile for the back-end of the DiffEqOnline web site.
 
 ## Running locally, not from the image
 
+From the other repo base directory run
+
 ```
-julia /api/mux_server.jl 7777
+julia ./api/mux_server.jl 7777
 ```
 
 where 7777 is the port you want it to host on.  
@@ -14,7 +16,7 @@ where 7777 is the port you want it to host on.
 From the root folder of this repository I'm running something like
 
 ```
-docker build -t diffeqonline-server .
+docker build --build-arg CACHE_DATE=$(date) -t diffeqonline-server .
 ```
 
 If something changed in the REQUIRE file recently you may need to use the `--no-cache` option.

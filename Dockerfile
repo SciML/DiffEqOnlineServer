@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     make \
     gcc \
-    libzmq3-dev 
+    libzmq3-dev
 
 # Make package folder and install everything in require
 ENV JULIA_PKGDIR=/opt/julia
@@ -24,6 +24,9 @@ RUN julia -e 'Pkg.build("Plots"); Pkg.build("SymEngine"); Pkg.rm("Conda")'
 
 # Force precompile of all modules -- this should greatly improve startup time
 RUN julia -e 'using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon'
+
+# Hack to prevent caching of subsequent steps
+ARG CACHE_DATE=2016-01-01
 
 # Grab the server file from the base repo
 RUN curl -L -O https://github.com/JuliaDiffEq/DiffEqOnline/raw/master/api/mux_server.jl
