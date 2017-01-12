@@ -25,16 +25,11 @@ RUN julia -e 'Pkg.build("Plots"); Pkg.build("SymEngine"); Pkg.rm("Conda")'
 # Force precompile of all modules -- this should greatly improve startup time
 RUN julia -e 'using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon'
 
-# Hack to prevent caching of subsequent steps
-ARG CACHE_DATE=2016-01-01
-
-# Grab the server file from the base repo
-RUN curl -L -O https://github.com/JuliaDiffEq/DiffEqOnline/raw/master/api/mux_server.jl
-
+COPY /api /api
 
 # Don't run as root
 RUN useradd -ms /bin/bash myuser
 RUN chown -R myuser:myuser /opt/julia
 USER myuser
 
-CMD julia mux_server.jl $PORT
+CMD julia /api/mux_server.jl $PORT
