@@ -28,6 +28,18 @@ function withHeaders(res, req)
     )
 end
 
+# Better error handling
+function jsoncatch(app, req)
+  try
+    app(req)
+  catch e
+    println("Error occured!")
+    io = IOBuffer()
+    showerror(io, e, catch_backtrace())
+    return withHeaders(JSON.json(Dict("error_msg" => takebuf_string(io), "error" => true)), req)
+  end
+end
+
 # A debug endpoint
 function wakeup()
     return JSON.json(Dict("data" => Dict("awake" => true), "error" => false))
@@ -104,13 +116,15 @@ function solveit(b64::String)
     return JSON.json(Dict("data" => res, "error" => false))
 end
 
+ourStack = stack(Mux.todict, jsoncatch, Mux.splitquery, Mux.toresponse)
+
 @app test = (
-    Mux.defaults,
+    ourStack,
     page(req -> withHeaders("Nothing to see here...", req)),
     route("/wakeup", req -> withHeaders(wakeup(), req)),
     route("/solveit", req -> withHeaders(solveit(req), req)),
     Mux.notfound()
 )
 
-println("About to start the server")
+println("About to start the server!")
 @sync serve(test, port=parse(Int64, ARGS[1]))
