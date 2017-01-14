@@ -29,14 +29,16 @@ function withHeaders(res, req)
 end
 
 # Better error handling
-function jsoncatch(app, req)
+function errorCatch(app, req)
   try
     app(req)
   catch e
     println("Error occured!")
     io = IOBuffer()
-    showerror(io, e, catch_backtrace())
-    return withHeaders(JSON.json(Dict("error_msg" => takebuf_string(io), "error" => true)), req)
+    showerror(io, e)
+    resp = withHeaders(JSON.json(Dict("message" => takebuf_string(io), "error" => true)), req)
+    resp[:status] = 500
+    return resp
   end
 end
 
@@ -61,7 +63,7 @@ function solveit(b64::String)
 
     exstr = string("begin\n", obj["diffEqText"], "\nend")
     if has_function_def(exstr)
-        return JSON.json(Dict("data" => false, "error" => "Don't define functions in your system of equations..."))
+        error("Don't define functions in your system of equations...")
     end
     ex = parse(exstr)
     # Need a way to make sure the expression only calls "safe" functions here!!!
@@ -116,7 +118,7 @@ function solveit(b64::String)
     return JSON.json(Dict("data" => res, "error" => false))
 end
 
-ourStack = stack(Mux.todict, jsoncatch, Mux.splitquery, Mux.toresponse)
+ourStack = stack(Mux.todict, errorCatch, Mux.splitquery, Mux.toresponse)
 
 @app test = (
     ourStack,
