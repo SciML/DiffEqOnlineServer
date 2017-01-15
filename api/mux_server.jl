@@ -1,5 +1,7 @@
 tic()
-using DiffEqBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
+using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
+plotly()
+
 println("Package loading took this long: ", toq())
 
 # Handy functions
@@ -58,62 +60,117 @@ end
 
 function solveit(b64::String)
     tic()
-    plotly()
-    strObj = String(base64decode(b64))
-    obj = JSON.parse(strObj)
-    # println(obj)
-    # println(" ")
 
-    exstr = string("begin\n", obj["diffEqText"], "\nend")
-    if has_function_def(exstr)
-        error("Don't define functions in your system of equations...")
-    end
-    ex = parse(exstr)
-    # Need a way to make sure the expression only calls "safe" functions here!!!
-    println("Diff equ: ", ex)
-    name = Symbol(strObj)
-    params = [parse(p) for p in obj["parameters"]]
-    println("Params: ", params)
-    # Make sure these are always floats
-    tspan = (Float64(obj["timeSpan"][1]),Float64(obj["timeSpan"][2]))
-    println("tspan: ", tspan)
-    u0 = [parse(Float64, u) for u in obj["initialConditions"]]
-    println("u0: ", u0)
-    # Also need sanitization here!
-    if has_function_def(obj["vars"])
-        error("Don't define functions in your vars...")
-    end
-    vars = eval(parse(obj["vars"]))
-    println("vars: ", vars, " type: ", typeof(vars))
-    algstr = obj["solver"]  #Get this from the reqest in the future!
-    algs = Dict{Symbol,OrdinaryDiffEq.OrdinaryDiffEqAlgorithm}(
-                :Tsit5 => Tsit5(),
-                :Vern6 => Vern6(),
-                :Vern7 => Vern7(),
-                :Feagin14 => Feagin14(),
-                :BS3 => BS3(),
-                :Rosenbrock23 => Rosenbrock23())
-    opts = Dict{Symbol,Bool}(
-        :build_tgrad => false,
-        :build_jac => false,
-        :build_expjac => false,
-        :build_invjac => false,
-        :build_invW => false,
-        :build_hes => false,
-        :build_invhes => false,
-        :build_dpfuncs => false)
-    f = ode_def_opts(name, opts, ex, params...)
-    prob = ODEProblem(f,u0,tspan)
-    alg = algs[parse(algstr)]
-    sol = solve(prob,alg);
+    setup_time = @elapsed begin
+        strObj = String(base64decode(b64))
+        obj = JSON.parse(strObj)
+        # println(obj)
+        # println(" ")
 
-    println("did sol")
-    numpoints = 1000
-    newt = collect(linspace(sol.t[1],sol.t[end],numpoints))
-    newu = sol.interp(newt)
-    println("did interp")
-    p = plot(sol, vars=vars)
-    println("did plot")
+        exstr = string("begin\n", obj["diffEqText"], "\nend")
+        if has_function_def(exstr)
+            error("Don't define functions in your system of equations...")
+        end
+        ex = parse(exstr)
+        # Need a way to make sure the expression only calls "safe" functions here!!!
+        println("Diff equ: ", ex)
+        name = Symbol(strObj)
+        params = [parse(p) for p in obj["parameters"]]
+        println("Params: ", params)
+        # Make sure these are always floats
+        tspan = (Float64(obj["timeSpan"][1]),Float64(obj["timeSpan"][2]))
+        println("tspan: ", tspan)
+        u0 = [parse(Float64, u) for u in obj["initialConditions"]]
+        println("u0: ", u0)
+        # Also need sanitization here!
+        if has_function_def(obj["vars"])
+            error("Don't define functions in your vars...")
+        end
+        vars = eval(parse(obj["vars"]))
+        println("vars: ", vars, " type: ", typeof(vars))
+        algstr = obj["solver"]  #Get this from the reqest in the future!
+        algs = Dict{Symbol,OrdinaryDiffEq.OrdinaryDiffEqAlgorithm}(
+                    :Tsit5 => Tsit5(),
+                    :Vern6 => Vern6(),
+                    :Vern7 => Vern7(),
+                    :Feagin14 => Feagin14(),
+                    :BS3 => BS3(),
+                    :Rosenbrock23 => Rosenbrock23())
+        opts = Dict{Symbol,Bool}(
+            :build_tgrad => false,
+            :build_jac => false,
+            :build_expjac => false,
+            :build_invjac => false,
+            :build_invW => false,
+            :build_hes => false,
+            :build_invhes => false,
+            :build_dpfuncs => false)
+        f = ode_def_opts(name, opts, ex, params...)
+        prob = QuickODEProblem{Vector{Float64},Float64,true}(f,u0,tspan)
+        alg = algs[parse(algstr)]
+    end
+    println("Setup time: $setup_time")
+
+    init_dt_time = @elapsed begin
+      dtmax = tspan[end]-tspan[1]
+      tdir = sign(dtmax)
+      abstol = 1e-6; reltol = 1e-3
+      ## Compute initdt without JIT lag
+      t = tspan[1]
+      f₀ = similar(u0./t); f₁ = similar(u0./t); u₁ = similar(u0)
+      sk = abstol+abs.(u0)*reltol
+      d₀ = OrdinaryDiffEq.ODE_DEFAULT_NORM(u0./sk)
+      f(t,u0,f₀)
+      d₁ = OrdinaryDiffEq.ODE_DEFAULT_NORM(f₀./sk)
+      if d₀ < 1/10^(5) || d₁ < 1/10^(5)
+        dt₀ = 1/10^(6)
+      else
+        dt₀ = (d₀/d₁)/100
+      end
+      dt₀ = min(dt₀,tdir*dtmax)
+      @inbounds for i in eachindex(u0)
+         u₁[i] = u0[i] + tdir*dt₀*f₀[i]
+      end
+      f(t+tdir*dt₀,u₁,f₁)
+      tmp = (f₁.-f₀)./(abstol+abs.(u0)*reltol)
+      d₂ = OrdinaryDiffEq.ODE_DEFAULT_NORM(tmp)/dt₀
+      if max(d₁,d₂)<=1/10^(15)
+        dt₁ = max(1/10^(6),dt₀*1/10^(3))
+      else
+        dt₁ = 10.0^(-(2+log10(max(d₁,d₂)))/OrdinaryDiffEq.alg_order(alg))
+      end
+      dt = tdir*min(100dt₀,dt₁)
+    end
+    println("Init dt time: $init_dt_time")
+
+    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},dt=dt);
+    println("Solve time: $solve_time")
+
+    length(sol)>= 1e5 && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
+
+    # Build the plot
+    sol_handle_time = @elapsed begin
+        plotdensity = 10*length(sol)
+
+        vars = DiffEqBase.interpret_vars(vars,sol)
+        newt = collect(linspace(sol.t[1],sol.t[end],plotdensity))
+        newu = sol(newt)
+
+        dims = length(vars[1])
+        for var in vars
+          @assert length(var) == dims
+        end
+        # Should check that all have the same dims!
+        plot_vecs,labels = DiffEqBase.solplot_vecs_and_labels(dims,vars,newu,newt,sol,false)
+    end
+    println("Solution handling time: $sol_handle_time")
+
+    plot_time = @elapsed p = plot(plot_vecs..., labels=reshape(labels,1,length(labels)), lw=3)
+    # Should also set flip
+    #tdir = sign(sol.t[end]-sol.t[1])
+    #xflip --> tdir < 0
+
+    println("Plot time: $plot_time")
     layout = Plots.plotly_layout_json(p)
     series = Plots.plotly_series_json(p)
 
@@ -122,7 +179,8 @@ function solveit(b64::String)
     name = 0
     params = 0
 
-    res = Dict("u" => newu, "t" => newt, "layout" =>layout, "series"=>series)
+    #res = Dict("u" => newu, "t" => newt, "layout" =>layout, "series"=>series)
+    res = Dict("layout" =>layout, "series"=>series)
     println("Done, took this long: ", toq())
     return JSON.json(Dict("data" => res, "error" => false))
 end
