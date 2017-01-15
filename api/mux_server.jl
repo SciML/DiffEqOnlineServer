@@ -143,10 +143,12 @@ function solveit(b64::String)
     end
     println("Init dt time: $init_dt_time")
 
-    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},dt=dt);
+    maxiters = 1e4
+
+    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},dt=dt,maxiters=maxiters);
     println("Solve time: $solve_time")
 
-    length(sol)>= 1e5 && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
+    length(sol)>= maxiters && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
 
     # Build the plot
     sol_handle_time = @elapsed begin
