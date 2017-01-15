@@ -34,9 +34,12 @@ function errorCatch(app, req)
     app(req)
   catch e
     println("Error occured!")
+
     io = IOBuffer()
     showerror(io, e)
-    resp = withHeaders(JSON.json(Dict("message" => takebuf_string(io), "error" => true)), req)
+    err_text = takebuf_string(io)
+    println(err_text)
+    resp = withHeaders(JSON.json(Dict("message" => err_text, "error" => true)), req)
     resp[:status] = 500
     return resp
   end
@@ -76,6 +79,12 @@ function solveit(b64::String)
     println("tspan: ", tspan)
     u0 = [parse(Float64, u) for u in obj["initialConditions"]]
     println("u0: ", u0)
+    # Also need sanitization here!
+    if has_function_def(obj["vars"])
+        error("Don't define functions in your vars...")
+    end
+    vars = eval(parse(obj["vars"]))
+    println("vars: ", vars, " type: ", typeof(vars))
     algstr = obj["solver"]  #Get this from the reqest in the future!
     algs = Dict{Symbol,OrdinaryDiffEq.OrdinaryDiffEqAlgorithm}(
                 :Tsit5 => Tsit5(),
@@ -103,7 +112,7 @@ function solveit(b64::String)
     newt = collect(linspace(sol.t[1],sol.t[end],numpoints))
     newu = sol.interp(newt)
     println("did interp")
-    p = plot(sol,xlabel="t")
+    p = plot(sol, vars=vars)
     println("did plot")
     layout = Plots.plotly_layout_json(p)
     series = Plots.plotly_series_json(p)
