@@ -162,15 +162,14 @@ function solveit(b64::String)
         end
         # Should check that all have the same dims!
         plot_vecs,labels = DiffEqBase.solplot_vecs_and_labels(dims,vars,newu,newt,sol,false)
+
+        xflip = (sol.t[end]-sol.t[1]) < 0
     end
     println("Solution handling time: $sol_handle_time")
 
-    plot_time = @elapsed p = plot(plot_vecs..., labels=reshape(labels,1,length(labels)), lw=3)
-    # Should also set flip
-    #tdir = sign(sol.t[end]-sol.t[1])
-    #xflip --> tdir < 0
-
+    plot_time = @elapsed p = plot(plot_vecs...,labels=reshape(labels,1,length(labels)),lw=3,xflip=xflip)
     println("Plot time: $plot_time")
+
     layout = Plots.plotly_layout_json(p)
     series = Plots.plotly_series_json(p)
 
