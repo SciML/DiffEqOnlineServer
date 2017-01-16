@@ -10,9 +10,14 @@ expr_has_head(e::Expr, h::Symbol) = expr_has_head(e, Symbol[h])
 function expr_has_head(e::Expr, vh::Vector{Symbol})
     in(e.head, vh) || any(a -> expr_has_head(a, vh), e.args)
 end
-has_function_def(s::String) = has_function_def(parse(s; raise=false))
-has_function_def(e::Expr) = expr_has_head(e, Symbol[:(->), :function])
 
+has_function_def(s::String) = has_function_def(parse(s; raise=false))
+function has_function_def(e::Expr)
+    expr_has_head(e, Symbol[:(->), :function]) ||
+    # one line funtion definition:
+    (expr_has_head(e, :(=)) && expr_has_head(e.args[], :call))
+end
+    
 # Headers -- set Access-Control-Allow-Origin for either dev or prod
 function withHeaders(res, req)
     println("Origin: ", get(req[:headers], "Origin", ""))
