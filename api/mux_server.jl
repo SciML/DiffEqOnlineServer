@@ -111,65 +111,14 @@ function solveit(b64::String)
     end
     println("Setup time: $setup_time")
 
-    init_dt_time = @elapsed begin
-      dtmax = tspan[end]-tspan[1]
-      tdir = sign(dtmax)
-      abstol = 1e-6; reltol = 1e-3
-      ## Compute initdt without JIT lag
-      t = tspan[1]
-      f₀ = similar(u0./t); f₁ = similar(u0./t); u₁ = similar(u0)
-      sk = abstol+abs.(u0)*reltol
-      d₀ = OrdinaryDiffEq.ODE_DEFAULT_NORM(u0./sk)
-      f(t,u0,f₀)
-      d₁ = OrdinaryDiffEq.ODE_DEFAULT_NORM(f₀./sk)
-      if d₀ < 1/10^(5) || d₁ < 1/10^(5)
-        dt₀ = 1/10^(6)
-      else
-        dt₀ = (d₀/d₁)/100
-      end
-      dt₀ = min(dt₀,tdir*dtmax)
-      @inbounds for i in eachindex(u0)
-         u₁[i] = u0[i] + tdir*dt₀*f₀[i]
-      end
-      f(t+tdir*dt₀,u₁,f₁)
-      tmp = (f₁.-f₀)./(abstol+abs.(u0)*reltol)
-      d₂ = OrdinaryDiffEq.ODE_DEFAULT_NORM(tmp)/dt₀
-      if max(d₁,d₂)<=1/10^(15)
-        dt₁ = max(1/10^(6),dt₀*1/10^(3))
-      else
-        dt₁ = 10.0^(-(2+log10(max(d₁,d₂)))/OrdinaryDiffEq.alg_order(alg))
-      end
-      dt = tdir*min(100dt₀,dt₁)
-    end
-    println("Init dt time: $init_dt_time")
-
     maxiters = 1e4
 
-    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},dt=dt,maxiters=maxiters);
+    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},maxiters=maxiters);
     println("Solve time: $solve_time")
 
     length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
 
-    # Build the plot
-    sol_handle_time = @elapsed begin
-        plotdensity = 10*length(sol)
-
-        vars = DiffEqBase.interpret_vars(vars,sol)
-        newt = collect(linspace(sol.t[1],sol.t[end],plotdensity))
-        newu = sol(newt)
-
-        dims = length(vars[1])
-        for var in vars
-          @assert length(var) == dims
-        end
-        # Should check that all have the same dims!
-        plot_vecs,labels = DiffEqBase.solplot_vecs_and_labels(dims,vars,newu,newt,sol,false)
-
-        xflip = (sol.t[end]-sol.t[1]) < 0
-    end
-    println("Solution handling time: $sol_handle_time")
-
-    plot_time = @elapsed p = plot(plot_vecs...,labels=reshape(labels,1,length(labels)),lw=3,xflip=xflip)
+    plot_time = @elapsed p = plot(sol)
     println("Plot time: $plot_time")
 
     layout = Plots.plotly_layout_json(p)

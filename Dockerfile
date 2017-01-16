@@ -26,7 +26,7 @@ RUN julia -e 'Pkg.build("Plots"); Pkg.build("SymEngine"); Pkg.rm("Conda")'
 RUN julia -e 'Pkg.clone("https://github.com/JuliaDiffEq/DiffEqWebBase.jl");'
 
 # Check out master until patches
-RUN julia -e 'Pkg.checkout("DiffEqBase"); Pkg.checkout("OrdinaryDiffEq")'
+RUN julia -e 'Pkg.checkout("DiffEqBase");'
 
 # Force precompile of all modules -- this should greatly improve startup time
 RUN julia -e 'using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon'
