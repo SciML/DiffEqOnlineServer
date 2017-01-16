@@ -83,8 +83,8 @@ function solveit(b64::String)
     setup_time = @elapsed begin
         strObj = String(base64decode(b64))
         obj = JSON.parse(strObj)
-        # println(obj)
-        # println(" ")
+        println(obj)
+        println(" ")
 
         exstr = string("begin\n", obj["diffEqText"], "\nend")
         if has_function_def(exstr)
@@ -96,6 +96,7 @@ function solveit(b64::String)
         name = Symbol(strObj)
         params = [parse(p) for p in obj["parameters"]]
         println("Params: ", params)
+
         # Make sure these are always floats
         tspan = (Float64(obj["timeSpan"][1]),Float64(obj["timeSpan"][2]))
         println("tspan: ", tspan)
@@ -109,8 +110,20 @@ function solveit(b64::String)
         println("vars: ", vars, " type: ", typeof(vars))
         algstr = obj["solver"]  #Get this from the reqest in the future!
         f = ode_def_opts(name, opts, ex, params...)
-        prob = QuickODEProblem{Vector{Float64},Float64,true}(f,u0,tspan)
-        #prob = QuickSDEProblem{Vector{Float64},Float64,true,:Diagonal,typeof(randn)}(f,g,u0,tspan)
+
+        if haskey(obj,"noiseText")
+          noise_name = Symbol(strObj*"noise")
+          exstr = string("begin\n", obj["noiseText"], "\nend")
+          if has_function_def(exstr)
+              error("Don't define functions in your system of equations...")
+          end
+          noise_ex = parse(exstr)
+          noise_params = [parse(p) for p in obj["noiseParameters"]]
+          g = ode_def_opts(noise_name, opts, noise_ex, noise_params...)
+          prob = QuickSDEProblem{Vector{Float64},Float64,true,:Diagonal,typeof(randn)}(f,g,u0,tspan,DiffEqBase.WHITE_NOISE)
+        else
+          prob = QuickODEProblem{Vector{Float64},Float64,true}(f,u0,tspan)
+        end
         alg = algs[parse(algstr)]
     end
     println("Setup time: $setup_time")
@@ -125,7 +138,7 @@ function solveit(b64::String)
 
     length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
 
-    plot_time = @elapsed p = plot(sol)
+    plot_time = @elapsed p = plot(sol,vars=vars)
     println("Plot time: $plot_time")
 
     layout = Plots.plotly_layout_json(p)
