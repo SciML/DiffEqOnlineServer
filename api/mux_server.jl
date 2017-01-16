@@ -133,10 +133,10 @@ function solveit(b64::String)
 
     maxiters = 1e4
 
-    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},maxiters=maxiters);
+    solve_time = @elapsed sol = solve(prob,alg,Vector{Vector{Float64}}(),Vector{Float64}(),[],Val{false},maxiters=maxiters)
     println("Solve time: $solve_time")
 
-    length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff or blow up to infinity. Try the stiff solver (Rosenbrock23) or make sure that the equation has a valid solution.")
+    length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff, blow up to infinity, or you choose too long of a timespan. Try the stiff solver (Rosenbrock23 for ODEs) or make sure that the equation has a valid solution. If you need more computing power/time try DifferentialEquations.jl!")
 
     plot_time = @elapsed p = plot(sol,vars=vars)
     println("Plot time: $plot_time")
