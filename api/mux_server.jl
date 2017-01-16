@@ -6,7 +6,6 @@ const algs = Dict{Symbol,DEAlgorithm}(
             :Tsit5 => Tsit5(),
             :Vern6 => Vern6(),
             :Vern7 => Vern7(),
-            :Feagin14 => Feagin14(),
             :BS3 => BS3(),
             :Rosenbrock23 => Rosenbrock23(),
             :SRIW1 => SRIW1(),
