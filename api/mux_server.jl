@@ -1,5 +1,5 @@
 tic()
-using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, StochasticDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
+using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, StochasticDiffEq, Calculus, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
 plotly()
 
 const algs = Dict{Symbol,DEAlgorithm}(
@@ -21,6 +21,8 @@ const opts = Dict{Symbol,Bool}(
     :build_invhes => false,
     :build_dpfuncs => false)
 
+const ALLOWED_FUNCTIONS = Set(union([:+,:-,:/,:*,:^,:\,:%,:!,:(==),:(!=),:<,:(<=),:>,:(>=),:(//)],first.(Calculus.symbolic_derivative_1arg_list)))
+
 println("Package loading took this long: ", toq())
 
 # Handy functions
@@ -33,10 +35,30 @@ end
 has_function_def(s::String) = has_function_def(parse(s; raise=false))
 function has_function_def(e::Expr)
     expr_has_head(e, Symbol[:(->), :function]) ||
+    expr_has_head(e, Symbol[:macro]) ||
     # one line funtion definition:
     (expr_has_head(e, :(=)) && expr_has_head(e.args[], :call))
 end
-    
+
+has_block_def(s::String) = has_block_def(parse(s; raise=false))
+function has_block_def(e::Expr)
+    expr_has_head(e, Symbol[:for]) ||
+    expr_has_head(e, Symbol[:while]) ||
+    expr_has_head(e, Symbol[:if]) ||
+    expr_has_head(e, Symbol[:begin]) ||
+    expr_has_head(e, Symbol[:let]) ||
+    expr_has_head(e, Symbol[:do]) ||
+    expr_has_head(e, Symbol[:try])
+end
+
+has_macro(s::String) = search(s,'@')!=0
+
+has_bad_call(s) = false
+has_bad_call(s::String) = has_bad_call(parse(s; raise=false))
+function has_bad_call(e::Expr)
+    (in(e.head, Symbol[:call]) && e.args[1] ∉ ALLOWED_FUNCTIONS)|| any(a -> has_bad_call(a), e.args)
+end
+
 # Headers -- set Access-Control-Allow-Origin for either dev or prod
 function withHeaders(res, req)
     println("Origin: ", get(req[:headers], "Origin", ""))
@@ -94,6 +116,15 @@ function solveit(b64::String)
         exstr = string("begin\n", obj["diffEqText"], "\nend")
         if has_function_def(exstr)
             error("Don't define functions in your system of equations...")
+        end
+        if has_block_def(exstr)
+            error("Don't use Julia control flow blocks in your equations...")
+        end
+        if has_macro(exstr)
+          error("Don't use macros you fowl demon. I'm watching you...")
+        end
+        if has_bad_call(exstr)
+          error("A function which is not allowed was detected. If you're trying to be sneaky, then you're a bad person.")
         end
         ex = parse(exstr)
         # Need a way to make sure the expression only calls "safe" functions here!!!
