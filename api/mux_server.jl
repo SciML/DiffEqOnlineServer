@@ -44,6 +44,7 @@ has_block_def(s::String) = has_block_def(parse(s; raise=false))
 function has_block_def(e::Expr)
     expr_has_head(e, Symbol[:for]) ||
     expr_has_head(e, Symbol[:while]) ||
+    expr_has_head(e, Symbol[:(->), :ccall]) ||
     expr_has_head(e, Symbol[:if]) ||
     expr_has_head(e, Symbol[:begin]) ||
     expr_has_head(e, Symbol[:let]) ||
@@ -154,6 +155,7 @@ function solveit(b64::String)
               error("Don't define functions in your system of equations...")
           end
           noise_ex = parse(exstr)
+          println("Noise equ: ", ex)
           noise_params = [parse(p) for p in obj["noiseParameters"]]
           g = ode_def_opts(noise_name, opts, noise_ex, noise_params...)
           prob = QuickSDEProblem{Vector{Float64},Float64,true,:Diagonal,typeof(randn)}(f,g,u0,tspan,DiffEqBase.WHITE_NOISE)
