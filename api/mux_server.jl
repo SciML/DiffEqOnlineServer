@@ -1,6 +1,25 @@
 tic()
-using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
+using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, StochasticDiffEq, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
 plotly()
+
+const algs = Dict{Symbol,DEAlgorithm}(
+            :Tsit5 => Tsit5(),
+            :Vern6 => Vern6(),
+            :Vern7 => Vern7(),
+            :Feagin14 => Feagin14(),
+            :BS3 => BS3(),
+            :Rosenbrock23 => Rosenbrock23(),
+            :SRIW1 => SRIW1(),
+            :SRA1 => SRA1())
+const opts = Dict{Symbol,Bool}(
+    :build_tgrad => false,
+    :build_jac => false,
+    :build_expjac => false,
+    :build_invjac => false,
+    :build_invW => false,
+    :build_hes => false,
+    :build_invhes => false,
+    :build_dpfuncs => false)
 
 println("Package loading took this long: ", toq())
 
@@ -89,27 +108,15 @@ function solveit(b64::String)
         vars = eval(parse(obj["vars"]))
         println("vars: ", vars, " type: ", typeof(vars))
         algstr = obj["solver"]  #Get this from the reqest in the future!
-        algs = Dict{Symbol,OrdinaryDiffEq.OrdinaryDiffEqAlgorithm}(
-                    :Tsit5 => Tsit5(),
-                    :Vern6 => Vern6(),
-                    :Vern7 => Vern7(),
-                    :Feagin14 => Feagin14(),
-                    :BS3 => BS3(),
-                    :Rosenbrock23 => Rosenbrock23())
-        opts = Dict{Symbol,Bool}(
-            :build_tgrad => false,
-            :build_jac => false,
-            :build_expjac => false,
-            :build_invjac => false,
-            :build_invW => false,
-            :build_hes => false,
-            :build_invhes => false,
-            :build_dpfuncs => false)
         f = ode_def_opts(name, opts, ex, params...)
         prob = QuickODEProblem{Vector{Float64},Float64,true}(f,u0,tspan)
+        #prob = QuickSDEProblem{Vector{Float64},Float64,true,:Diagonal,typeof(randn)}(f,g,u0,tspan)
         alg = algs[parse(algstr)]
     end
     println("Setup time: $setup_time")
+
+    length(f.syms) != length(u0) && error("Initial conditions inconsistent with the differential equation. Make sure there is an initial value for every variable.")
+    (maximum(isinf.(u0)) || maximum(isnan.(u0))) && error("Initial conditions must be finite values")
 
     maxiters = 1e4
 
@@ -129,7 +136,6 @@ function solveit(b64::String)
     name = 0
     params = 0
 
-    #res = Dict("u" => newu, "t" => newt, "layout" =>layout, "series"=>series)
     res = Dict("layout" =>layout, "series"=>series)
     println("Done, took this long: ", toq())
     return JSON.json(Dict("data" => res, "error" => false))
