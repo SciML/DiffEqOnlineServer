@@ -1,5 +1,6 @@
 tic()
 using DiffEqBase, DiffEqWebBase, OrdinaryDiffEq, StochasticDiffEq, Calculus, ParameterizedFunctions, Plots, Mux, JSON, HttpCommon
+include("sanitation.jl")
 plotly()
 
 const algs = Dict{Symbol,DEAlgorithm}(
@@ -20,44 +21,7 @@ const opts = Dict{Symbol,Bool}(
     :build_invhes => false,
     :build_dpfuncs => false)
 
-const ALLOWED_FUNCTIONS = Set(union([:+,:-,:/,:*,:^,:\,:%,:!,:(==),:(!=),:<,:(<=),:>,:(>=),:(//)],first.(Calculus.symbolic_derivative_1arg_list)))
-
 println("Package loading took this long: ", toq())
-
-# Handy functions
-expr_has_head(s, h) = false
-expr_has_head(e::Expr, h::Symbol) = expr_has_head(e, Symbol[h])
-function expr_has_head(e::Expr, vh::Vector{Symbol})
-    in(e.head, vh) || any(a -> expr_has_head(a, vh), e.args)
-end
-
-has_function_def(s::String) = has_function_def(parse(s; raise=false))
-function has_function_def(e::Expr)
-    expr_has_head(e, Symbol[:(->), :function]) ||
-    expr_has_head(e, Symbol[:macro]) ||
-    # one line funtion definition:
-    (expr_has_head(e, :(=)) && expr_has_head(e.args[], :call))
-end
-
-has_block_def(s::String) = has_block_def(parse(s; raise=false))
-function has_block_def(e::Expr)
-    expr_has_head(e, Symbol[:for]) ||
-    expr_has_head(e, Symbol[:while]) ||
-    expr_has_head(e, Symbol[:(->), :ccall]) ||
-    expr_has_head(e, Symbol[:if]) ||
-    expr_has_head(e, Symbol[:begin]) ||
-    expr_has_head(e, Symbol[:let]) ||
-    expr_has_head(e, Symbol[:do]) ||
-    expr_has_head(e, Symbol[:try])
-end
-
-has_macro(s::String) = search(s,'@')!=0
-
-has_bad_call(s) = false
-has_bad_call(s::String) = has_bad_call(parse(s; raise=false))
-function has_bad_call(e::Expr)
-    (in(e.head, Symbol[:call]) && e.args[1] ∉ ALLOWED_FUNCTIONS)|| any(a -> has_bad_call(a), e.args)
-end
 
 # Headers -- set Access-Control-Allow-Origin for either dev or prod
 function withHeaders(res, req)
@@ -98,7 +62,7 @@ function wakeup()
     return JSON.json(Dict("data" => Dict("awake" => true), "error" => false))
 end
 
-# The ODE endpoint
+# This endpoint is used for both ODEs and SDEs
 function solveit(req::Dict{Any,Any})
     b64 = convert(String, req[:path][1])
     solveit(b64)
@@ -110,26 +74,13 @@ function solveit(b64::String)
     setup_time = @elapsed begin
         strObj = String(base64decode(b64))
         obj = JSON.parse(strObj)
-        #println(obj)
-        #println(" ")
-
         exstr = string("begin\n", obj["diffEqText"], "\nend")
-        if has_function_def(exstr)
-            error("Don't define functions in your system of equations...")
-        end
-        if has_block_def(exstr)
-            error("Don't use Julia control flow blocks in your equations...")
-        end
-        if has_macro(exstr)
-          error("Don't use macros you fowl demon. I'm watching you...")
-        end
-        if has_bad_call(exstr)
-          error("A function which is not allowed was detected. If you're trying to be sneaky, then you're a bad person.")
-        end
+        sanitize_string(exstr)
         ex = parse(exstr)
         # Need a way to make sure the expression only calls "safe" functions here!!!
         println("Diff equ: ", ex)
         name = Symbol(strObj)
+        [sanitize_string(p) for p in obj["parameters"]]
         params = [parse(p) for p in obj["parameters"]]
         println("Params: ", params)
 
@@ -139,9 +90,7 @@ function solveit(b64::String)
         u0 = [parse(Float64, u) for u in obj["initialConditions"]]
         println("u0: ", u0)
         # Also need sanitization here!
-        if has_function_def(obj["vars"])
-            error("Don't define functions in your vars...")
-        end
+        sanitize_string(obj["vars"])
         vars = eval(parse(obj["vars"]))
         println("vars: ", vars, " type: ", typeof(vars))
         algstr = obj["solver"]  #Get this from the reqest in the future!
@@ -150,11 +99,10 @@ function solveit(b64::String)
         if haskey(obj,"noiseText")
           noise_name = Symbol(strObj*"noise")
           exstr = string("begin\n", obj["noiseText"], "\nend")
-          if has_function_def(exstr)
-              error("Don't define functions in your system of equations...")
-          end
+          sanitize_string(exstr)
           noise_ex = parse(exstr)
           println("Noise equ: ", ex)
+          [sanitize_string(p) for p in obj["noiseParameters"]]
           noise_params = [parse(p) for p in obj["noiseParameters"]]
           g = ode_def_opts(noise_name, opts, noise_ex, noise_params...)
           prob = QuickSDEProblem{Vector{Float64},Float64,true,:Diagonal,typeof(randn)}(f,g,u0,tspan,DiffEqBase.WHITE_NOISE)
@@ -180,11 +128,6 @@ function solveit(b64::String)
 
     layout = Plots.plotly_layout_json(p)
     series = Plots.plotly_series_json(p)
-
-    # Destroy some methods and objects
-    ex = 0
-    name = 0
-    params = 0
 
     res = Dict("layout" =>layout, "series"=>series)
     println("Done, took this long: ", toq())
