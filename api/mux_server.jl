@@ -110,8 +110,8 @@ function solveit(b64::String)
     setup_time = @elapsed begin
         strObj = String(base64decode(b64))
         obj = JSON.parse(strObj)
-        println(obj)
-        println(" ")
+        #println(obj)
+        #println(" ")
 
         exstr = string("begin\n", obj["diffEqText"], "\nend")
         if has_function_def(exstr)
