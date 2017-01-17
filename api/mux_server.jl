@@ -101,7 +101,7 @@ function solveit(b64::String)
           exstr = string("begin\n", obj["noiseText"], "\nend")
           sanitize_string(exstr)
           noise_ex = parse(exstr)
-          println("Noise equ: ", ex)
+          println("Noise equ: ", noise_ex)
           [sanitize_string(p) for p in obj["noiseParameters"]]
           noise_params = [parse(p) for p in obj["noiseParameters"]]
           g = ode_def_opts(noise_name, opts, noise_ex, noise_params...)
