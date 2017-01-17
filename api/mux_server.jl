@@ -125,13 +125,13 @@ function solveit(b64::String)
 
     length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff, blow up to infinity, or you choose too long of a timespan. Try the stiff solver (Rosenbrock23 for ODEs) or make sure that the equation has a valid solution. If you need more computing power/time try DifferentialEquations.jl!")
 
-    plot_time = @elapsed p = plot(sol,vars=vars, title=title)
+    plot_time = @elapsed p = plot(sol,vars=vars)
     println("Plot time: $plot_time")
 
     layout = Plots.plotly_layout_json(p)
     series = Plots.plotly_series_json(p)
 
-    res = Dict("layout" =>layout, "series"=>series)
+    res = Dict("layout" =>layout, "series"=>series, "title" => title)
     println("Done, took this long: ", toq())
     return JSON.json(Dict("data" => res, "error" => false))
 end
