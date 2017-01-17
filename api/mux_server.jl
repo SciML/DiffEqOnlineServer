@@ -74,6 +74,8 @@ function solveit(b64::String)
     setup_time = @elapsed begin
         strObj = String(base64decode(b64))
         obj = JSON.parse(strObj)
+        title = obj["title"]
+        println("Title: ", title)
         exstr = string("begin\n", obj["diffEqText"], "\nend")
         sanitize_string(exstr)
         ex = parse(exstr)
@@ -123,7 +125,7 @@ function solveit(b64::String)
 
     length(sol)>= .9*maxiters && error("Max iterations reached. The equation may be stiff, blow up to infinity, or you choose too long of a timespan. Try the stiff solver (Rosenbrock23 for ODEs) or make sure that the equation has a valid solution. If you need more computing power/time try DifferentialEquations.jl!")
 
-    plot_time = @elapsed p = plot(sol,vars=vars)
+    plot_time = @elapsed p = plot(sol,vars=vars, title=title)
     println("Plot time: $plot_time")
 
     layout = Plots.plotly_layout_json(p)
