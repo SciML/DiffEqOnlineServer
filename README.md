@@ -49,3 +49,5 @@ or
 ```
 heroku container:push web --app AppName
 ```
+
+You need to make sure you are properly authenticated with the Heroku CLI for this to work.
