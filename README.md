@@ -43,3 +43,9 @@ General instructions can be found [here](https://devcenter.heroku.com/articles/c
 ```
 heroku container:deploy
 ```
+
+or
+
+```
+heroku container:push web --app AppName
+```
