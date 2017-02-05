@@ -146,5 +146,8 @@ ourStack = stack(Mux.todict, errorCatch, Mux.splitquery, Mux.toresponse)
     Mux.notfound()
 )
 
+println("Warming up the engine...")
+solveit("eyJkaWZmRXFUZXh0IjoiZHggPSBhKnggLSBiKngqeVxuZHkgPSAtYyp5ICsgZCp4KnkiLCJ0aW1lU3BhbiI6WzAsNV0sInBhcmFtZXRlcnMiOlsiYT0xLjUiLCJiPTEiLCJjPTMiLCJkPTEiXSwiaW5pdGlhbENvbmRpdGlvbnMiOlsiMS4wIiwiMS4wIl0sInZhcnMiOiJbOngsIDp5XSIsInNvbHZlciI6IlRzaXQ1IiwidGl0bGUiOiJUaGUgTG90a2EtVm9sdGVycmEgRXF1YXRpb25zOiBNb2RlbCBvZiBSYWJiaXRzIGFuZCBXb2x2ZXMifQ==")
+
 println("About to start the server!")
 @sync serve(test, port=parse(Int64, ARGS[1]))
