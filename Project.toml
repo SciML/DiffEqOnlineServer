@@ -1,0 +1,12 @@
+[deps]
+Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
+DiffEqWebBase = "199ddbe7-5660-5d34-ad45-164698b1b2b3"
+HttpCommon = "77172c1b-203f-54ac-aa54-3f1198fe9f90"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Mux = "a975b10e-0019-58db-a62f-e48ff68538c9"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+ParameterizedFunctions = "65888b18-ceab-5e60-b2b9-181511a3b968"
+Plotly = "58dd65bb-95f3-509e-9936-c39a10fdeae7"
+PlotlyJS = "f0f68f2c-4968-5e81-91da-67840de0976a"
+StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
